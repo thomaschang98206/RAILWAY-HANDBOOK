@@ -8,7 +8,8 @@
   :root{
     --bg:#0f172a;
     --headerH:60px;
-    --tabH:58px; /* slate-900 */
+    --tabH:58px;
+    --sliderH:44px; /* slate-900 */
     --panel:#111827; /* gray-900 */
     --muted:#1f2937; /* gray-800 */
     --card:#0b1220; /* custom dark */
@@ -123,6 +124,46 @@
   @media (max-width: 430px){
     .tabbar{display:flex}
     .layout{height:calc(100% - var(--headerH) - var(--tabH));}
+  }
+
+
+  /* Menu Rail (range slider) */
+  .menurail{
+    position: fixed; left: 0; right: 0; bottom: calc(var(--tabH));
+    height: var(--sliderH);
+    background: rgba(2,6,23,.75);
+    border-top: 1px solid #0b1630;
+    display: none; /* mobile only */
+    z-index: 29;
+    padding: 6px 12px 4px 12px;
+    backdrop-filter: blur(6px);
+  }
+  .menurail input[type=range]{
+    -webkit-appearance: none; appearance: none;
+    width: 100%; height: 24px; background: transparent; margin: 0;
+  }
+  .menurail input[type=range]::-webkit-slider-runnable-track{
+    height: 6px; background: #263247; border-radius: 999px; border: 1px solid #1f2a3d;
+  }
+  .menurail input[type=range]::-moz-range-track{
+    height: 6px; background: #263247; border-radius: 999px; border: 1px solid #1f2a3d;
+  }
+  .menurail input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none; appearance:none;
+    width: 22px; height:22px; border-radius: 50%;
+    background: #22d3ee; border: 2px solid #0b1020; margin-top: -8px;
+    box-shadow: 0 0 0 4px rgba(34,211,238,0.15);
+  }
+  .menurail input[type=range]::-moz-range-thumb{
+    width: 22px; height:22px; border-radius:50%;
+    background:#22d3ee; border:2px solid #0b1020;
+  }
+  .menurail-labels{ display:flex; justify-content:space-between; font-size:11px; color:#9ca3af; margin-top:2px; padding: 0 2px;}
+  .menurail-labels span{ width: 20%; text-align:center }
+  @media (max-width: 430px){
+    .menurail{ display:block }
+    /* layout height subtract header + slider + tab bar */
+    .layout{ height: calc(100% - var(--headerH) - var(--sliderH) - var(--tabH)); }
   }
 
 </style>
@@ -399,10 +440,41 @@ Array.from(document.querySelectorAll('.nav button')).forEach(btn=>{
 
 
 // ----- Bottom Tab Bar -----
+
+// ----- Menu Rail Slider -----
+(function(){
+  const order = ['overview','moduleA','moduleB','moduleC','scenario'];
+  const range = document.getElementById('menuRange');
+  const menurail = document.getElementById('menurail');
+  if(!range || !menurail) return;
+  // Drag to switch module
+  range.addEventListener('input', ()=>{
+    const idx = Math.max(0, Math.min(order.length-1, parseInt(range.value,10)||0));
+    const target = order[idx];
+    if(window.switchModule) window.switchModule(target);
+  });
+  // Sync when module changes via other UI
+  const syncTo = (target)=>{
+    const i = order.indexOf(target);
+    if(i>=0){ range.value = String(i); }
+  };
+  // Initial sync
+  const cur = document.querySelector('section.module.active')?.id || 'overview';
+  syncTo(cur);
+  // Observe nav clicks
+  document.querySelectorAll('.nav button').forEach(btn=>{
+    btn.addEventListener('click', ()=> syncTo(btn.getAttribute('data-target')));
+  });
+  // Observe tabbar clicks as well
+  const bar = document.getElementById('tabbar');
+  if(bar){ bar.querySelectorAll('button').forEach(btn=>{
+    btn.addEventListener('click', ()=> syncTo(btn.getAttribute('data-target')));
+  }); }
+})();
 (function(){
   const bar = document.getElementById('tabbar');
   if(!bar) return;
-  const activate = (target)=>{
+  window.switchModule = function(target){
     // Trigger top nav click for unified logic
     const topBtn = Array.from(document.querySelectorAll('.nav button')).find(b=>b.getAttribute('data-target')===target);
     if(topBtn){ topBtn.click(); }
@@ -710,6 +782,15 @@ initEcon();
 initScenario();
 
 </script>
+
+  
+  <!-- Bottom slider (menu rail) -->
+  <div id="menurail" class="menurail" aria-label="模組滑桿">
+    <input type="range" id="menuRange" min="0" max="4" step="1" value="0" aria-label="左右滑動選擇模組"/>
+    <div class="menurail-labels">
+      <span>總</span><span>A</span><span>B</span><span>C</span><span>情</span>
+    </div>
+  </div>
 
   <nav id="tabbar" aria-label="模組快速切換" class="tabbar">
     <button data-target="overview" aria-label="總覽">總覽</button>
