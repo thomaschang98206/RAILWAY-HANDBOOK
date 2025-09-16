@@ -135,10 +135,9 @@
 .layout{ padding-bottom: var(--bottomBarH); }
 body{ padding-bottom: calc(env(safe-area-inset-bottom) + var(--bottomBarH)); }
 
-
 /* ------- Bottom slider ------- */
 .bottom-slider{
-  position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
   background: rgba(15,23,42,.92);
   backdrop-filter: blur(6px);
   border-top: 1px solid #1f2937;
@@ -157,7 +156,7 @@ body{ padding-bottom: calc(env(safe-area-inset-bottom) + var(--bottomBarH)); }
   color:#041e2a; border-color:#0ea5e9;
   background:linear-gradient(180deg,#0ea5e9,#0369a1);
 }
-.bottom-slider .bs-track{ display:flex; align-items:center; }
+.bottom-slider .bs-track{ display:flex; align-items:center; pointer-events:auto; }
 .bottom-slider input[type=range]{
   -webkit-appearance:none; appearance:none; width:100%;
   height: 26px; background: transparent;
@@ -172,10 +171,6 @@ body{ padding-bottom: calc(env(safe-area-inset-bottom) + var(--bottomBarH)); }
   border:2px solid #0b1020; box-shadow:0 0 0 3px rgba(34,211,238,.2);
 }
 .bottom-slider .bs-active{ font-size:12px; color:#e5e7eb; text-align:center; }
-@media (max-width:430px){
-  .bottom-slider{ padding:8px 10px calc(8px + env(safe-area-inset-bottom)); }
-}
-
 </style>
 </head>
 <body>
@@ -492,66 +487,102 @@ function download(filename, text) {
 }
 
 // ---------- NAV ----------
-
-// ---------- NAV & Bottom Slider ----------
-const sliderTargets = ['mapdash','moduleA','moduleB','moduleC','scenario'];
-const sliderNames   = ['地圖總覽｜情境儀表板','模組A｜四A實驗室','模組B｜模式選擇','模組C｜EIRR / FIRR','情境資料｜2號線'];
-
-function activateModule(targetId){
-  // 左側高亮
+// 共用切換函式（左欄／底部拉桿都呼叫這個）
+function switchTo(target){
+  // 左欄高亮
   document.querySelectorAll('.nav button').forEach(b=>{
-    b.classList.toggle('active', b.getAttribute('data-target')===targetId);
+    b.classList.toggle('active', b.getAttribute('data-target')===target);
   });
   // 顯示對應 section
   document.querySelectorAll('section.module').forEach(sec=>sec.classList.remove('active'));
-  const tgt = document.getElementById(targetId);
+  const tgt = document.getElementById(target);
   if(tgt) tgt.classList.add('active');
 
-  // 模組進入後的重繪
-  if(targetId==='moduleB'){ setTimeout(()=>{ try{ redrawMode(); }catch(e){} }, 50); }
-  if(targetId==='mapdash'){ setTimeout(()=>{ try{ refreshMapAndDash(); }catch(e){} }, 50); }
+  // 需要重繪或刷新圖表的模組
+  if(target==='moduleB'){ setTimeout(()=>{ try{ redrawMode(); }catch(e){} }, 50); }
+  if(target==='mapdash'){ setTimeout(()=>{ try{ refreshMapAndDash(); }catch(e){} }, 50); }
 
-  // 同步底部拉桿
-  const idx = sliderTargets.indexOf(targetId);
+  // 同步底部拉桿與文案
+  const targets = ['overview','mapdash','moduleA','moduleB','moduleC','scenario','teacher'];
+  const names   = ['總覽｜如何操作','地圖總覽｜情境儀表板','模組A｜四A實驗室','模組B｜模式選擇','模組C｜EIRR / FIRR','情境資料｜2號線','教師配套與授權'];
+  const idx = targets.indexOf(target);
   const slider = document.getElementById('moduleSlider');
   if(idx>=0 && slider) slider.value = idx;
   const label = document.getElementById('bsActiveLabel');
-  if(idx>=0 && label) label.textContent = sliderNames[idx];
+  if(idx>=0 && label) label.textContent = names[idx];
   const bs = document.getElementById('bsLabels');
   if(bs){ bs.querySelectorAll('span').forEach((s,i)=> s.classList.toggle('active', i===idx)); }
 }
 
-// 左側欄按鈕 → 切換
+// 左欄按鈕 → 切換
 Array.from(document.querySelectorAll('.nav button')).forEach(btn=>{
-  btn.addEventListener('click', ()=>{
+  btn.addEventListener('click', (ev)=>{
+    ev.preventDefault();
     const target = btn.getAttribute('data-target');
-    activateModule(target);
+    switchTo(target);
   });
 });
 
-// 底部拉桿
+// 底部拉桿／標籤
+
+// 保證在 DOM 準備好且 #moduleSlider 存在後再綁定
 (function(){
-  const sliderEl = document.getElementById('moduleSlider');
-  const bsLabels = document.getElementById('bsLabels');
-  if(sliderEl){
-    sliderEl.addEventListener('input', ()=>{
-      const idx = Number(sliderEl.value);
-      const target = sliderTargets[idx] || 'mapdash';
-      activateModule(target);
+  const targets = ['overview','mapdash','moduleA','moduleB','moduleC','scenario','teacher'];
+  const names   = ['總覽｜如何操作','地圖總覽｜情境儀表板','模組A｜四A實驗室','模組B｜模式選擇','模組C｜EIRR / FIRR','情境資料｜2號線','教師配套與授權'];
+
+  function bindSlider(){
+    const slider = document.getElementById('moduleSlider');
+    const bs = document.getElementById('bsLabels');
+    if(!slider) return false;
+
+    function go(i){
+      const idx = Math.max(0, Math.min(targets.length-1, i|0));
+      slider.value = idx;
+      switchTo(targets[idx]);
+    }
+
+    const onSlide = ()=>{ go(Math.round(Number(slider.value)||0)); };
+    ['input','change','pointerup','touchend','mouseup','keyup'].forEach(evt=>{
+      slider.addEventListener(evt, onSlide, {passive:true});
     });
-  }
-  if(bsLabels){
-    bsLabels.querySelectorAll('span').forEach(s=>{
-      s.addEventListener('click', ()=>{
-        const idx = Number(s.dataset.i);
-        const target = sliderTargets[idx] || 'mapdash';
-        const slider = document.getElementById('moduleSlider');
-        if(slider) slider.value = idx;
-        activateModule(target);
+
+    const track = slider.closest('.bs-track');
+    if(track){
+      track.addEventListener('click', (e)=>{
+        const rect = slider.getBoundingClientRect();
+        const pos = Math.max(0, Math.min(1, (e.clientX - rect.left)/rect.width));
+        go(Math.round(pos*(targets.length-1)));
       });
+    }
+
+    if(bs){
+      bs.querySelectorAll('span').forEach(s=>{
+        s.addEventListener('click', ()=>{ go(Number(s.dataset.i)||0); });
+      });
+    }
+
+    // 初始同步：抓現在 active 的分頁
+    requestAnimationFrame(()=>{
+      const current = document.querySelector('section.module.active')?.id || 'overview';
+      const idx0 = targets.indexOf(current);
+      go(idx0>=0 ? idx0 : 0);
     });
+    return true;
   }
-})();
+
+  if(!bindSlider()){
+    // 若此刻還未抓到 slider，等到 DOM 完成或節點出現再綁定
+    window.addEventListener('DOMContentLoaded', bindSlider, {once:true});
+    window.addEventListener('load', bindSlider, {once:true});
+
+    const mo = new MutationObserver(()=>{
+      if(bindSlider()){
+        try{ mo.disconnect(); }catch(e){}
+      }
+    });
+    mo.observe(document.documentElement || document.body, {childList:true, subtree:true});
+  }
+})();;
 // ---------- OVERVIEW ----------
 // no-op
 
@@ -993,19 +1024,21 @@ try{ refreshMapAndDash(); }catch(e){}
 
 </script>
 
-<!-- Bottom slider: 快速切換 模組/地圖/情境 -->
+<!-- Bottom slider: 快速切換 模組/地圖/情境/資料來源 -->
 <nav class="bottom-slider" aria-label="快速模組選擇">
   <div class="bs-labels" id="bsLabels">
-    <span data-i="0">地圖</span>
-    <span data-i="1">A</span>
-    <span data-i="2">B</span>
-    <span data-i="3">C</span>
-    <span data-i="4">情境</span>
+    <span data-i="0">總覽</span>
+    <span data-i="1">地圖</span>
+    <span data-i="2">A</span>
+    <span data-i="3">B</span>
+    <span data-i="4">C</span>
+    <span data-i="5">情境</span>
+    <span data-i="6">資料來源</span>
   </div>
   <div class="bs-track">
-    <input id="moduleSlider" type="range" min="0" max="4" step="1" value="0" aria-label="模組拉桿">
+    <input id="moduleSlider" type="range" min="0" max="6" step="1" value="0" aria-label="模組拉桿">
   </div>
-  <div class="bs-active"><span id="bsActiveLabel">地圖總覽｜情境儀表板</span></div>
+  <div class="bs-active"><span id="bsActiveLabel">總覽｜如何操作</span></div>
 </nav>
 
 </body>
