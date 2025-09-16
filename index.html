@@ -6,9 +6,9 @@
 <title>都市鐵路發展：互動式教學平台（MVP）</title>
 <style>
   :root{
-    --headerH:56px;
-
-    --bg:#0f172a; /* slate-900 */
+    --bg:#0f172a;
+    --headerH:60px;
+    --tabH:58px; /* slate-900 */
     --panel:#111827; /* gray-900 */
     --muted:#1f2937; /* gray-800 */
     --card:#0b1220; /* custom dark */
@@ -27,17 +27,11 @@
   body{
     margin:0; background:linear-gradient(180deg,#0b1020 0%, #0a0f1a 100%);
     color:var(--text); font-family: ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Inter,Helvetica,Arial,"Noto Sans",sans-serif;
-    /* iPhone safe areas */
-    padding-left: env(safe-area-inset-left);
-    padding-right: env(safe-area-inset-right);
-    padding-bottom: env(safe-area-inset-bottom);
-    overflow: hidden; /* prevent double scroll; main/aside scroll internally */
   }
   header{
     display:flex; align-items:center; justify-content:space-between;
-    padding:12px 14px; background:rgba(15,23,42,.8); backdrop-filter: blur(6px);
+    padding:14px 18px; background:rgba(15,23,42,.8); backdrop-filter: blur(6px);
     position:sticky; top:0; z-index:20; border-bottom:1px solid #1f2937;
-    min-height: var(--headerH);
   }
   header h1{font-size:18px; margin:0; letter-spacing:.3px}
   header .actions{display:flex; gap:10px}
@@ -52,10 +46,10 @@
   .btn-ghost{background:transparent; border-color:#334155}
 
   .layout{
-    display:grid; grid-template-columns: 280px 1fr; gap:16px; padding:16px; height:calc(var(--vh, 1vh) * 100 - var(--headerH, 60px)); min-height:0;
+    display:grid; grid-template-columns: 280px 1fr; gap:16px; padding:16px; height:calc(100% - var(--headerH));
   }
   aside{
-    background: var(--panel); border:1px solid #1f2937; border-radius:16px; padding:12px; overflow:auto; -webkit-overflow-scrolling:touch; touch-action: pan-y;
+    background: var(--panel); border:1px solid #1f2937; border-radius:16px; padding:12px; overflow:auto;
   }
   .brand{
     display:flex; align-items:center; gap:10px; margin-bottom:8px; color:var(--text-dim)
@@ -66,7 +60,7 @@
   .nav .active{outline:2px solid var(--accent); border-color:var(--accent)}
 
   main{
-    background: var(--panel); border:1px solid #1f2937; border-radius:16px; padding:16px; overflow:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; touch-action: pan-y;
+    background: var(--panel); border:1px solid #1f2937; border-radius:16px; padding:16px; overflow:auto;
   }
   section.module{display:none}
   section.module.active{display:block}
@@ -93,8 +87,6 @@
     width:100%; padding:8px 10px; border-radius:10px; border:1px solid #334155; background:#0b1325; color:var(--text)
   }
   canvas{width:100%; background:#0a1220; border-radius:12px; border:1px solid #1f2937}
-  canvas#mapCanvas{height:300px}
-  .hint{font-size:12px; color:#9ca3af; line-height:1.5}
   .foot{
     color:#94a3b8; font-size:12px; display:flex; flex-wrap:wrap; gap:8px; align-items:center
   }
@@ -107,26 +99,30 @@
     main{order:1}
   }
 
-  /* -------- iPhone 6.1" (<=430px CSS width) compact layout -------- */
+  /* Bottom Tab Bar (mobile) */
+  .tabbar{
+    position: fixed; left:0; right:0; bottom:0;
+    height: var(--tabH);
+    background: rgba(15,23,42,.9);
+    border-top:1px solid #1f2937;
+    display:none; /* shown on small screens */
+    z-index:30;
+    padding: env(safe-area-inset-bottom) 8px 8px 8px;
+    gap:6px; align-items:center; justify-content:space-around;
+    backdrop-filter: blur(6px);
+  }
+  .tabbar button{
+    flex:1 1 0; min-width:0;
+    background: #0b1020;
+    border:1px solid #1f2937;
+    color:#e5e7eb;
+    border-radius:12px; padding:10px 6px;
+    font-size:13px; font-weight:600;
+  }
+  .tabbar button.active{ outline:2px solid #22d3ee; }
   @media (max-width: 430px){
-    /* Fallback: allow full-page scroll if needed */
-    body{overflow:auto}
-
-    header h1{font-size:14px}
-    header .actions button{padding:6px 10px; border-radius:10px}
-    .layout{grid-template-columns:1fr; gap:10px; padding:10px; height:calc(var(--vh, 1vh) * 100 - var(--headerH))}
-    aside{order:2; height:120px; padding:8px; border-radius:12px; overflow-x:auto; overflow-y:hidden; white-space:nowrap}
-    .nav{flex-direction:row; gap:8px; flex-wrap:nowrap}
-    .nav button{display:inline-block; flex:0 0 auto; font-size:12px; padding:8px 10px; border-radius:10px; white-space:nowrap}
-    main{order:1; padding:10px; border-radius:12px}
-    h2{font-size:16px; margin:2px 0 8px}
-    p.lead{font-size:13px}
-    .grid-2, .grid-3{grid-template-columns:1fr}
-    .card{padding:10px; border-radius:12px}
-    .kpi{font-size:16px}
-    .label{font-size:11px}
-    canvas#modeChart{height:250px}
-    input[type=number], select{font-size:14px}
+    .tabbar{display:flex}
+    .layout{height:calc(100% - var(--headerH) - var(--tabH));}
   }
 
 </style>
@@ -152,7 +148,6 @@
       <div class="hr"></div>
       <div class="nav">
         <button data-target="overview" class="active">總覽｜如何操作</button>
-        <button data-target="mapdash">地圖總覽｜情境儀表板</button>
         <button data-target="moduleA">模組A｜四A實驗室（社會包容）</button>
         <button data-target="moduleB">模組B｜模式選擇工作坊</button>
         <button data-target="moduleC">模組C｜經濟 vs 財務（EIRR / FIRR）</button>
@@ -194,33 +189,7 @@
         </div>
       </section>
 
-
-      <!-- MAP & DASHBOARD -->
-      <section id="mapdash" class="module">
-        <h2>地圖總覽｜情境儀表板</h2>
-        <p class="lead">上傳情境後，這裡會顯示簡潔底圖與路線（以目前「走廊」與「模式」為主），右側同步呈現四A、票箱比與投資指標。</p>
-        <div class="grid grid-2">
-          <div class="card">
-            <canvas id="mapCanvas" height="320"></canvas>
-            <div class="label muted">提示：若未提供地理座標，系統會用走廊方向（東西向/南北向）生成示意線。</div>
-          </div>
-          <div class="card" id="mapStats">
-            <div class="grid">
-              <div class="row"><div>走廊 / 模式</div><div class="kpi" id="mdCorrMode">—</div></div>
-              <div class="row"><div>四A：可用 / 可達（總 / 底40%） / 負擔 / 接受度</div><div class="kpi" id="mdFourA">—</div></div>
-              <div class="row"><div>票箱比（自償性，Revenue ÷ O&M）</div><div class="kpi" id="mdFarebox">—</div></div>
-              <div class="row"><div>EIRR / FIRR</div><div class="kpi" id="mdIRR">—</div></div>
-              <div class="row"><div>NPV（經濟 / 財務，百萬 USD）</div><div class="kpi" id="mdNPV">—</div></div>
-            </div>
-            <div class="hint" style="margin-top:8px">
-              票箱比僅比較每年票運+非票收入與 O&M 支出，不含資本成本；EIRR/FIRR 使用教學模型即時計算。
-            </div>
-          </div>
-        </div>
-      </section>
-
-
-            <!-- MODULE A: Four A -->
+      <!-- MODULE A: Four A -->
       <section id="moduleA" class="module">
         <h2>模組A｜四A實驗室（Availability / Accessibility / Affordability / Acceptability）</h2>
         <p class="lead">操作「覆蓋率、班距、票價與日上限」觀察四A指標如何變化，並特別關注底層40%族群。</p>
@@ -247,18 +216,7 @@
               <div class="bar"><span id="barAfford" style="width:0%"></span></div>
               <div class="row"><div>Acceptability 滿意度（綜合）</div><div class="kpi" id="kpiAccept">—</div></div>
               <div class="bar"><span id="barAccept" style="width:0%"></span></div>
-              
-              <details class="card" style="margin-top:8px">
-                <summary>四A 計算邏輯（教學用近似）</summary>
-                <div class="hint">
-                  <div><strong>Availability</strong> = 100 × [0.6×覆蓋率 + 0.4×(頻率指標/4.6)]，頻率指標 = (15 ÷ 班距)^0.6。</div>
-                  <div><strong>Accessibility</strong>：基準可達工作數 = 400,000；<br/>可達工作數 = 基準 × (覆蓋率/0.5) × (15 ÷ 班距)^0.4，並上限 1,500,000。<br/>底層40% = 可達工作數 × [0.85 × (1 + max(0, 覆蓋率−0.6)×0.6)]。</div>
-                  <div><strong>Affordability</strong>（負擔率）= 每月交通費 ÷ 低收入月所得；<br/>每月交通費 = min(票價×2, 每日上限) × 22 天。</div>
-                  <div><strong>Acceptability</strong> = 60 + 20×((覆蓋率−0.5)/0.5) + 20×((15−班距)/14)，介於 0–100。</div>
-                  <div><strong>達標條件</strong>：可達工作數 ≥ 基準×1.15；底層40% ≥ 基準×1.20；負擔率 ≤ 15%。</div>
-                </div>
-              </details>
-<div class="row"><div class="label">關卡提示</div><div id="badgeFourA" class="pill">尚未達標</div></div>
+              <div class="row"><div class="label">關卡提示</div><div id="badgeFourA" class="pill">尚未達標</div></div>
             </div>
           </div>
         </div>
@@ -292,13 +250,12 @@
               <div class="row"><div class="label">走廊長度</div><div class="kpi" id="kpiLen">— km</div></div>
               <div class="row"><div class="label">尖峰需求</div><div class="kpi" id="kpiDemand">— pphpd</div></div>
               <div class="row"><div class="label">建議最小運能</div><div class="kpi" id="kpiHeadroom">— pphpd</div></div>
-              <div class="row"><div class="label">估算成本（CAPEX 一次性 / O&M 每年）</div><div class="kpi" id="kpiCapex">—</div></div>
-              <div class="hint">CAPEX = 走廊長度 × 該模式每公里資本成本；O&M = 走廊長度 × 該模式每公里年營運維護費。數值僅供教學示意。</div>
+              <div class="row"><div class="label">選擇模式 CAPEX</div><div class="kpi" id="kpiCapex">—</div></div>
               <div class="row"><div class="label">韌性備註</div><div id="kpiResilience" class="pill">—</div></div>
             </div>
           </div>
           <div class="card">
-            <canvas id="modeChart" height="300"></canvas>
+            <canvas id="modeChart" height="340"></canvas>
             <div class="label muted">圖說：X 軸 = 每公里資本成本（百萬 USD/km），Y 軸 = 運能（pphpd）。虛線為需求 + 20% 餘裕。</div>
           </div>
         </div>
@@ -354,12 +311,7 @@
               <li>社會：底層 40% 集中東側三區，現票價負擔偏高</li>
               <li>韌性：目標達到百年洪與風暴潮性能門檻</li>
             </ul>
-            <div class="row" style="margin-top:10px; gap:8px">
-              <button id="btnDownloadScenario">下載 scenario.json</button>
-              <label class="btn" for="uploadScenario" style="cursor:pointer">上傳並套用 scenario.json</label>
-              <input id="uploadScenario" type="file" accept="application/json" style="display:none" />
-            </div>
-            <div class="hint">提示：下載後可編輯 JSON，使用「上傳並套用」載入新情境；成功後會重建走廊與參數並套入各模組。</div>
+            <button id="btnDownloadScenario">下載 scenario.json</button>
           </div>
         </div>
       </section>
@@ -387,20 +339,10 @@
   </div>
 
 <script>
-
-// -- iOS dynamic viewport height fix --
-(function(){
-  const setVh = ()=>{ document.documentElement.style.setProperty('--vh', `${window.innerHeight * 0.01}px`)};
-  ['resize','orientationchange','visibilitychange'].forEach(ev=>window.addEventListener(ev,setVh));
-  // update on scroll of internal containers
-  const hook = ()=>{ setVh(); };
-  window.addEventListener('scroll', hook, true);
-  setVh();
-})();
 // ---------------------------
 // Scenario Data (Harbor City)
 // ---------------------------
-let scenario = {
+const scenario = {
   city: "Harbor City",
   population_million: 3.0,
   budget_usd_m: 800,
@@ -452,10 +394,36 @@ Array.from(document.querySelectorAll('.nav button')).forEach(btn=>{
     const target = btn.getAttribute('data-target');
     document.querySelectorAll('section.module').forEach(sec=>sec.classList.remove('active'));
     document.getElementById(target).classList.add('active');
-    if(target==='moduleB') { setTimeout(()=>{ try{ redrawMode(); }catch(e){} }, 50); }
-    if(target==='mapdash'){ setTimeout(()=>{ try{ refreshMapAndDash(); }catch(e){} }, 50); }
   })
 });
+
+
+// ----- Bottom Tab Bar -----
+(function(){
+  const bar = document.getElementById('tabbar');
+  if(!bar) return;
+  const activate = (target)=>{
+    // Trigger top nav click for unified logic
+    const topBtn = Array.from(document.querySelectorAll('.nav button')).find(b=>b.getAttribute('data-target')===target);
+    if(topBtn){ topBtn.click(); }
+    // Visual state in tabbar
+    bar.querySelectorAll('button').forEach(b=>b.classList.toggle('active', b.getAttribute('data-target')===target));
+  };
+  // Initialize from current active section
+  const cur = document.querySelector('section.module.active')?.id || 'overview';
+  activate(cur);
+  // Click handlers
+  bar.querySelectorAll('button').forEach(btn=>{
+    btn.addEventListener('click', ()=> activate(btn.getAttribute('data-target')));
+  });
+  // Keep in sync when using top nav
+  document.querySelectorAll('.nav button').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const target = btn.getAttribute('data-target');
+      bar.querySelectorAll('button').forEach(b=>b.classList.toggle('active', b.getAttribute('data-target')===target));
+    });
+  });
+})();
 
 // ---------- OVERVIEW ----------
 // no-op
@@ -577,28 +545,15 @@ function initMode(){
     document.getElementById('om').value = om.toFixed(1);
   };
 
-  sel.addEventListener('change', ()=>{ state.selectedCorridor = sel.value; update(); try{ refreshMapAndDash(); }catch(e){} });
-  modeSel.addEventListener('change', ()=>{ state.selectedMode = modeSel.value; update(); try{ refreshMapAndDash(); }catch(e){} });
+  sel.addEventListener('change', ()=>{ state.selectedCorridor = sel.value; update(); });
+  modeSel.addEventListener('change', ()=>{ state.selectedMode = modeSel.value; update(); });
   document.getElementById('donothing').addEventListener('change', ()=> drawModeChart());
 
   update();
 }
 
-
-function redrawMode(){
-  const cor = scenario.corridors.find(c=>c.id===state.selectedCorridor) || scenario.corridors[0];
-  const headroom = Math.round(cor.pphpd*1.2);
-  drawModeChart(cor, headroom);
-}
-window.addEventListener('resize', ()=>{
-  const mod = document.getElementById('moduleB');
-  if(mod.classList.contains('active')){ redrawMode(); }
-});
-
 function drawModeChart(cor, headroom){
   const canvas = document.getElementById('modeChart'); const ctx = canvas.getContext('2d');
-  // If not visible (width==0), try again after layout
-  if(canvas.clientWidth === 0 || canvas.clientHeight === 0){ setTimeout(()=>drawModeChart(cor, headroom), 60); return; }
   const W = canvas.width; const H = canvas.height;
   // Hi-DPI fix
   const dpr = window.devicePixelRatio || 1; canvas.width = canvas.clientWidth * dpr; canvas.height = canvas.clientHeight * dpr; ctx.scale(dpr,dpr);
@@ -716,38 +671,6 @@ function initEcon(){
   });
 }
 
-
-// ---------- SCENARIO UPLOAD ----------
-function applyScenario(newS){
-  if(!newS || !Array.isArray(newS.corridors) || !newS.alt_modes){ alert('JSON 格式不完整，需包含 corridors 與 alt_modes'); return; }
-  scenario = newS;
-  // Rebuild corridor selector
-  const sel = document.getElementById('corridorSel');
-  if(sel){ sel.innerHTML = ''; (scenario.corridors||[]).forEach(c=>{ const o=document.createElement('option'); o.value=c.id; o.textContent=`${c.name||c.id}（${c.length_km} km / ${Number(c.pphpd).toLocaleString()} pphpd）`; sel.appendChild(o); });
-  state.selectedCorridor = (scenario.corridors[0]||{}).id || 'E-W'; sel.value = state.selectedCorridor; }
-  // Update fares/inc defaults if present
-  if(scenario.fares){ if(scenario.fares.base!=null) document.getElementById('fare').value = scenario.fares.base;
-    if(scenario.fares.cap_daily!=null) document.getElementById('cap').value = scenario.fares.cap_daily; }
-  if(scenario.income_low40_month!=null){ document.getElementById('inc').value = scenario.income_low40_month; }
-  // Refresh modules
-  initFourA(); initMode(); initScenario();
-try{ refreshMapAndDash(); }catch(e){} try{ refreshMapAndDash(); }catch(e){}
-  if(document.getElementById('moduleB').classList.contains('active')){ redrawMode(); }
-}
-
-(function(){
-  const up = document.getElementById('uploadScenario'); if(!up) return;
-  up.addEventListener('change', (e)=>{
-    const f = e.target.files && e.target.files[0]; if(!f) return;
-    const reader = new FileReader();
-    reader.onload = (ev)=>{
-      try{ const json = JSON.parse(ev.target.result); applyScenario(json); }
-      catch(err){ alert('JSON 解析失敗：' + err.message); }
-    };
-    reader.readAsText(f);
-  });
-})();
-
 // ---------- SCENARIO VIEW ----------
 function initScenario(){
   const txt = JSON.stringify(scenario, null, 2);
@@ -772,7 +695,6 @@ function initHeader(){
     const sel = document.getElementById('corridorSel'); sel.value='E-W';
     const modeSel = document.getElementById('modeSel'); modeSel.value='LRT';
     initMode();
-    try{ refreshMapAndDash(); }catch(e){}
     // Reset Econ fields
     document.getElementById('years').value=40;
     document.getElementById('drEcon').value=0.08; document.getElementById('drFin').value=0.06;
@@ -780,122 +702,22 @@ function initHeader(){
   });
 }
 
-
-// ---------- MAP & DASHBOARD ----------
-function getSelectedCorridor(){ return scenario.corridors.find(c=>c.id===state.selectedCorridor) || scenario.corridors[0]; }
-function getSelectedMode(){ return scenario.alt_modes[state.selectedMode]; }
-
-function drawMap(){
-  const canvas = document.getElementById('mapCanvas'); if(!canvas) return;
-  const ctx = canvas.getContext('2d');
-  if(canvas.clientWidth === 0 || canvas.clientHeight === 0){ setTimeout(drawMap, 60); return; }
-  const dpr = window.devicePixelRatio || 1;
-  canvas.width = canvas.clientWidth * dpr; canvas.height = canvas.clientHeight * dpr; ctx.scale(dpr,dpr);
-  const W = canvas.clientWidth, H = canvas.clientHeight;
-  // Background grid
-  ctx.fillStyle = '#0b1220'; ctx.fillRect(0,0,W,H);
-  ctx.strokeStyle = '#112032'; ctx.lineWidth = 1;
-  for(let x=0; x<=W; x+=Math.max(20, W/12)){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
-  for(let y=0; y<=H; y+=Math.max(20, H/8)){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
-  // Water stripe suggestion
-  ctx.fillStyle = 'rgba(56,189,248,0.06)'; ctx.fillRect(0, H*0.65, W, H*0.35);
-  // Draw corridors
-  const corridors = scenario.corridors || [];
-  corridors.forEach(c=>{
-    const poly = c.polyline;
-    let points = [];
-    if(Array.isArray(poly) && poly.length>=2){
-      // coords normalized 0..100
-      points = poly.map(([x,y])=> [x/100*W, y/100*H]);
-    }else{
-      // Fallback demo line
-      if((c.name||'').includes('東西') || c.id==='E-W'){ points = [[W*0.1, H*0.5],[W*0.9, H*0.5]]; }
-      else { points = [[W*0.5, H*0.15],[W*0.5, H*0.85]]; }
-    }
-    // style
-    const isSel = (c.id===state.selectedCorridor);
-    ctx.strokeStyle = isSel ? '#22d3ee' : '#475569';
-    ctx.lineWidth = isSel ? 6 : 3;
-    ctx.lineCap='round'; ctx.lineJoin='round';
-    ctx.beginPath();
-    ctx.moveTo(points[0][0], points[0][1]);
-    for(let i=1;i<points.length;i++) ctx.lineTo(points[i][0], points[i][1]);
-    ctx.stroke();
-    // station dots
-    ctx.fillStyle = isSel ? '#a78bfa' : '#64748b';
-    const n = Math.max(2, Math.round((c.length_km||10)/2));
-    for(let i=0;i<=n;i++){ const t=i/n; const x=points[0][0]*(1-t)+points[points.length-1][0]*t; const y=points[0][1]*(1-t)+points[points.length-1][1]*t; ctx.beginPath(); ctx.arc(x,y, isSel? 3.5:2.5, 0, Math.PI*2); ctx.fill(); }
-    // label
-    ctx.fillStyle = '#e5e7eb'; ctx.font='12px sans-serif'; const lx = points[Math.floor(points.length/2)][0]+8; const ly=points[Math.floor(points.length/2)][1]-6; ctx.fillText(`${c.name||c.id}`, lx, ly);
-  });
-}
-
-function updateMapDashboard(){
-  // Corridor / mode info
-  const cor = getSelectedCorridor(); const mk = state.selectedMode; const mode = getSelectedMode();
-  const modeName = ({BRT:'BRT',LRT:'LRT',METRO_ELEV:'Metro高架',METRO_UNDER:'Metro地下'})[mk] || mk;
-  setText('mdCorrMode', `${cor ? (cor.name || cor.id) : '—'} / ${modeName}`);
-
-  // Four A - reuse computation from module A inputs
-  const coverage = Number(document.getElementById('cov').value)/100;
-  const headway = Number(document.getElementById('hdw').value);
-  const freqIndex = Math.pow(15/headway, 0.6);
-  const availScore = clamp((coverage*0.6 + (freqIndex/4.6)*0.4)*100, 0, 100);
-  const baseJobs = 400000;
-  const jobs = Math.min(baseJobs * (coverage/0.5) * Math.pow(15/headway, 0.4), 1500000);
-  const bottomFactor = 1 + Math.max(0, (coverage-0.6))*0.6;
-  const jobsBottom = jobs * (0.85*bottomFactor);
-  const fare = Number(document.getElementById('fare').value);
-  const cap = Number(document.getElementById('cap').value);
-  const inc = Number(document.getElementById('inc').value);
-  const dailyCost = Math.min(fare*2, cap);
-  const monthCost = dailyCost*22;
-  const burden = clamp((monthCost/inc)*100,0,100);
-  const accept = clamp( 60 + 20*((coverage-0.5)/0.5) + 20*((15-headway)/14), 0, 100 );
-  setText('mdFourA', `${availScore.toFixed(0)}/100 · ${fmtNum(Math.round(jobs))}/${fmtNum(Math.round(jobsBottom))} · ${burden.toFixed(1)}% · ${accept.toFixed(0)}/100`);
-
-  // Farebox (revenue / O&M)
-  const om = (mode.om_per_km_pa||0) * (cor.length_km||0);
-  const revenue = Number(document.getElementById('revenue').value);
-  const farebox = om>0 ? revenue/om : 0;
-  setText('mdFarebox', `${farebox.toFixed(2)} 倍`);
-
-  // EIRR & FIRR (on-the-fly using Module C fields)
-  const Y = Number(document.getElementById('years').value);
-  const capex = Number(document.getElementById('capex').value);
-  const benefit = Number(document.getElementById('benefit').value);
-  const salvagePct = Number(document.getElementById('salvage').value)/100;
-  const drE = Number(document.getElementById('drEcon').value);
-  const drF = Number(document.getElementById('drFin').value);
-
-  const econCfs=[]; for(let t=0;t<=Y;t++) econCfs.push(0);
-  econCfs[0] = -capex*0.30; econCfs[1] = -capex*0.40; econCfs[2] = -capex*0.30;
-  for(let t=3;t<=Y;t++){ econCfs[t] = benefit - om }
-  econCfs[Y] += capex*salvagePct;
-  const eirr = irrFromCashflows(econCfs);
-  const enpv = npvFromCashflows(econCfs, drE);
-
-  const finCfs = econCfs.map((v,t)=>{ if(t<=2) return v; return (revenue - om) + (t===Y ? capex*salvagePct : 0); });
-  const firr = irrFromCashflows(finCfs);
-  const fnpv = npvFromCashflows(finCfs, drF);
-
-  setText('mdIRR', `${eirr===null?'—':(eirr*100).toFixed(1)+'%'} / ${firr===null?'—':(firr*100).toFixed(1)+'%'}`);
-  setText('mdNPV', `${enpv.toFixed(1)} / ${fnpv.toFixed(1)}`);
-}
-
-function refreshMapAndDash(){ drawMap(); updateMapDashboard(); }
-
-// Redraw when entering map module or on resize
-window.addEventListener('resize', ()=>{ const mod = document.getElementById('mapdash'); if(mod && mod.classList.contains('active')) refreshMapAndDash(); });
-
 // ---------- INIT ----------
 initHeader();
 initFourA();
 initMode();
 initEcon();
 initScenario();
-try{ refreshMapAndDash(); }catch(e){}
 
 </script>
+
+  <nav id="tabbar" aria-label="模組快速切換" class="tabbar">
+    <button data-target="overview" aria-label="總覽">總覽</button>
+    <button data-target="moduleA" aria-label="模組A">A</button>
+    <button data-target="moduleB" aria-label="模組B">B</button>
+    <button data-target="moduleC" aria-label="模組C">C</button>
+    <button data-target="scenario" aria-label="情境">情境</button>
+  </nav>
+
 </body>
 </html>
