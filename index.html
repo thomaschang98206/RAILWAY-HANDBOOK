@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>都市鐵路發展：互動式教學平台（MVP）</title>
+<style>
+  :root{
+    --headerH:56px;
+
+    --bg:#0f172a; /* slate-900 */
+    --panel:#111827; /* gray-900 */
+    --muted:#1f2937; /* gray-800 */
+    --card:#0b1220; /* custom dark */
+    --text:#e5e7eb; /* gray-200 */
+    --text-dim:#9ca3af; /* gray-400 */
+    --accent:#22d3ee; /* cyan-400 */
+    --accent-2:#a78bfa; /* violet-400 */
+    --ok:#34d399; /* green-400 */
+    --warn:#fbbf24; /* amber-400 */
+    --bad:#f87171; /* red-400 */
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; background:linear-gradient(180deg,#0b1020 0%, #0a0f1a 100%);
+    color:var(--text); font-family: ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Inter,Helvetica,Arial,"Noto Sans",sans-serif;
+    /* iPhone safe areas */
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+    padding-bottom: env(safe-area-inset-bottom);
+    overflow: hidden; /* prevent double scroll; main/aside scroll internally */
+  }
+  header{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:12px 14px; background:rgba(15,23,42,.8); backdrop-filter: blur(6px);
+    position:sticky; top:0; z-index:20; border-bottom:1px solid #1f2937;
+    min-height: var(--headerH);
+  }
+  header h1{font-size:18px; margin:0; letter-spacing:.3px}
+  header .actions{display:flex; gap:10px}
+  button, .btn{
+    background:linear-gradient(180deg, #1e293b, #111827);
+    border:1px solid #334155; color:var(--text); padding:8px 12px; border-radius:12px;
+    cursor:pointer; transition:transform .05s ease, background .2s ease, border-color .2s ease;
+  }
+  button:hover{transform:translateY(-1px); border-color:#475569}
+  button:active{transform:translateY(0)}
+  .btn-accent{background:linear-gradient(180deg,#0ea5e9,#0369a1); border-color:#0ea5e9}
+  .btn-ghost{background:transparent; border-color:#334155}
+
+  .layout{
+    display:grid; grid-template-columns: 280px 1fr; gap:16px; padding:16px; height:calc(var(--vh, 1vh) * 100 - var(--headerH, 60px));
+  }
+  aside{
+    background: var(--panel); border:1px solid #1f2937; border-radius:16px; padding:12px; overflow:auto;
+  }
+  .brand{
+    display:flex; align-items:center; gap:10px; margin-bottom:8px; color:var(--text-dim)
+  }
+  .nav{display:flex; flex-direction:column; gap:8px}
+  .nav button{width:100%; text-align:left; border-radius:10px; padding:10px 12px}
+  .nav .small{font-size:12px; color:var(--text-dim)}
+  .nav .active{outline:2px solid var(--accent); border-color:var(--accent)}
+
+  main{
+    background: var(--panel); border:1px solid #1f2937; border-radius:16px; padding:16px; overflow:auto;
+  }
+  section.module{display:none}
+  section.module.active{display:block}
+  h2{margin:4px 0 12px; font-weight:700; letter-spacing:.3px}
+  p.lead{color:var(--text-dim)}
+  .grid{display:grid; gap:12px}
+  .grid-2{grid-template-columns:1fr 1fr}
+  .grid-3{grid-template-columns:repeat(3, minmax(0,1fr))}
+  .card{
+    background:var(--card); border:1px solid #1f2937; padding:14px; border-radius:14px;
+  }
+  .row{display:flex; align-items:center; justify-content:space-between; gap:12px}
+  .muted{color:var(--text-dim)}
+  .kpi{font-size:20px; font-weight:700}
+  .label{font-size:12px; color:var(--text-dim)}
+  .bar{height:10px; background:#111827; border-radius:8px; overflow:hidden; border:1px solid #1f2937}
+  .bar > span{display:block; height:100%; background:linear-gradient(90deg,var(--accent),var(--accent-2));}
+  .pill{padding:4px 8px; border-radius:999px; font-size:12px; border:1px solid #334155; background:#0b1325}
+  .ok{color:#052e1a; background:linear-gradient(180deg,#34d399,#059669); border-color:#059669}
+  .warn{color:#4a3000; background:linear-gradient(180deg,#fbbf24,#d97706); border-color:#d97706}
+  .bad{color:#4a0d0d; background:linear-gradient(180deg,#f87171,#dc2626); border-color:#dc2626}
+  input[type=range]{width:100%}
+  input[type=number], select{
+    width:100%; padding:8px 10px; border-radius:10px; border:1px solid #334155; background:#0b1325; color:var(--text)
+  }
+  canvas{width:100%; background:#0a1220; border-radius:12px; border:1px solid #1f2937}
+  canvas#mapCanvas{height:300px}
+  .hint{font-size:12px; color:#9ca3af; line-height:1.5}
+  .foot{
+    color:#94a3b8; font-size:12px; display:flex; flex-wrap:wrap; gap:8px; align-items:center
+  }
+  .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace}
+  .hr{height:1px; background:#1f2937; margin:8px 0}
+
+  @media (max-width: 980px){
+    .layout{grid-template-columns:1fr}
+    aside{order:2; height:320px}
+    main{order:1}
+  }
+
+  /* -------- iPhone 6.1" (<=430px CSS width) compact layout -------- */
+  @media (max-width: 430px){
+    header h1{font-size:14px}
+    header .actions button{padding:6px 10px; border-radius:10px}
+    .layout{grid-template-columns:1fr; gap:10px; padding:10px; height:calc(var(--vh, 1vh) * 100 - var(--headerH))}
+    aside{order:2; height:120px; padding:8px; border-radius:12px; overflow-x:auto; overflow-y:hidden; white-space:nowrap}
+    .nav{flex-direction:row; gap:8px; flex-wrap:nowrap}
+    .nav button{display:inline-block; flex:0 0 auto; font-size:12px; padding:8px 10px; border-radius:10px; white-space:nowrap}
+    main{order:1; padding:10px; border-radius:12px}
+    h2{font-size:16px; margin:2px 0 8px}
+    p.lead{font-size:13px}
+    .grid-2, .grid-3{grid-template-columns:1fr}
+    .card{padding:10px; border-radius:12px}
+    .kpi{font-size:16px}
+    .label{font-size:11px}
+    canvas#modeChart{height:250px}
+    input[type=number], select{font-size:14px}
+  }
+
+</style>
+</head>
+<body>
+  <header>
+    <h1>都市鐵路發展：互動式教學平台（MVP）</h1>
+    <div class="actions">
+      <button class="btn-ghost" id="btnExport">匯出學習紀錄</button>
+      <button class="btn-accent" id="btnReset">重設情境</button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside>
+      <div class="brand">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 20h18M3 4h18M6 4v16M18 4v16M9 9h6M9 13h6" stroke="#22d3ee" stroke-width="1.5" stroke-linecap="round"/></svg>
+        <div>
+          <div class="label">Harbor City / 海港市</div>
+          <div class="small">教學目標：四A × 模式選擇 × EIRR/FIRR</div>
+        </div>
+      </div>
+      <div class="hr"></div>
+      <div class="nav">
+        <button data-target="overview" class="active">總覽｜如何操作</button>
+        <button data-target="mapdash">地圖總覽｜情境儀表板</button>
+        <button data-target="moduleA">模組A｜四A實驗室（社會包容）</button>
+        <button data-target="moduleB">模組B｜模式選擇工作坊</button>
+        <button data-target="moduleC">模組C｜經濟 vs 財務（EIRR / FIRR）</button>
+        <div class="hr"></div>
+        <button data-target="scenario">情境資料｜Harbor City 2號線</button>
+        <button data-target="teacher">教師配套與授權</button>
+      </div>
+    </aside>
+
+    <main>
+      <!-- OVERVIEW -->
+      <section id="overview" class="module active">
+        <h2>總覽｜如何操作</h2>
+        <p class="lead">這個 MVP 把《都市鐵路發展手冊》（World Bank, 2018）的核心方法做成 3 個可操作的模組：<strong>四A</strong>、<strong>模式選擇</strong>、<strong>EIRR/FIRR</strong>。選擇左側模組，拉動滑桿或拖放卡片，右側即時顯示效果與指標。</p>
+        <div class="grid grid-3">
+          <div class="card">
+            <div class="label">學習路徑</div>
+            <ul>
+              <li>1) 四A：把班距/覆蓋/票價與可達性、負擔率連結</li>
+              <li>2) 模式選擇：用成本–運能圖與走廊需求做判斷</li>
+              <li>3) 經濟 vs 財務：用利益/成本現金流算 EIRR 與 FIRR</li>
+            </ul>
+          </div>
+          <div class="card">
+            <div class="label">關卡（Harbor City 2號線）</div>
+            <ul>
+              <li>就業可達性 +15%（底層40% +20%）</li>
+              <li>EIRR ≥ 12%，且 FIRR 合理（可用非票收入/LVC 補強）</li>
+              <li>在預算 8 億美元內完成（或說明融資組合）</li>
+            </ul>
+          </div>
+          <div class="card">
+            <div class="label">小技巧</div>
+            <ul>
+              <li>右上角「重設情境」可回到預設</li>
+              <li>「匯出學習紀錄」可下載你的設定（JSON）</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+
+      <!-- MAP & DASHBOARD -->
+      <section id="mapdash" class="module">
+        <h2>地圖總覽｜情境儀表板</h2>
+        <p class="lead">上傳情境後，這裡會顯示簡潔底圖與路線（以目前「走廊」與「模式」為主），右側同步呈現四A、票箱比與投資指標。</p>
+        <div class="grid grid-2">
+          <div class="card">
+            <canvas id="mapCanvas" height="320"></canvas>
+            <div class="label muted">提示：若未提供地理座標，系統會用走廊方向（東西向/南北向）生成示意線。</div>
+          </div>
+          <div class="card" id="mapStats">
+            <div class="grid">
+              <div class="row"><div>走廊 / 模式</div><div class="kpi" id="mdCorrMode">—</div></div>
+              <div class="row"><div>四A：可用 / 可達（總 / 底40%） / 負擔 / 接受度</div><div class="kpi" id="mdFourA">—</div></div>
+              <div class="row"><div>票箱比（自償性，Revenue ÷ O&M）</div><div class="kpi" id="mdFarebox">—</div></div>
+              <div class="row"><div>EIRR / FIRR</div><div class="kpi" id="mdIRR">—</div></div>
+              <div class="row"><div>NPV（經濟 / 財務，百萬 USD）</div><div class="kpi" id="mdNPV">—</div></div>
+            </div>
+            <div class="hint" style="margin-top:8px">
+              票箱比僅比較每年票運+非票收入與 O&M 支出，不含資本成本；EIRR/FIRR 使用教學模型即時計算。
+            </div>
+          </div>
+        </div>
+      </section>
+
+
+            <!-- MODULE A: Four A -->
+      <section id="moduleA" class="module">
+        <h2>模組A｜四A實驗室（Availability / Accessibility / Affordability / Acceptability）</h2>
+        <p class="lead">操作「覆蓋率、班距、票價與日上限」觀察四A指標如何變化，並特別關注底層40%族群。</p>
+        <div class="grid grid-2">
+          <div class="card">
+            <div class="row"><div class="label">服務覆蓋率（% 人口 800m 內）</div><div class="pill" id="covLbl">--%</div></div>
+            <input type="range" id="cov" min="20" max="100" step="1">
+            <div class="row"><div class="label">尖峰班距（分鐘）</div><div class="pill" id="hdwLbl">-- 分</div></div>
+            <input type="range" id="hdw" min="1" max="15" step="1">
+            <div class="row"><div class="label">基礎票價（USD）</div><div class="pill" id="fareLbl">$--</div></div>
+            <input type="range" id="fare" min="0.50" max="2.50" step="0.05">
+            <div class="row"><div class="label">每日支出上限（USD）</div><div class="pill" id="capLbl">$--</div></div>
+            <input type="range" id="cap" min="2.0" max="6.0" step="0.1">
+            <div class="row"><div class="label">底層40%月所得（USD）</div><div class="pill" id="incLbl">$--</div></div>
+            <input type="range" id="inc" min="300" max="1000" step="10">
+          </div>
+          <div class="card">
+            <div class="grid">
+              <div class="row"><div>Availability 可用性</div><div class="kpi" id="kpiAvail">—</div></div>
+              <div class="bar"><span id="barAvail" style="width:0%"></span></div>
+              <div class="row"><div>Accessibility 就業可達性（60分鐘內，總/底40%）</div><div class="kpi" id="kpiAccess">—</div></div>
+              <div class="bar"><span id="barAccess" style="width:0%"></span></div>
+              <div class="row"><div>Affordability 票價負擔率（底40%）</div><div class="kpi" id="kpiAfford">—</div></div>
+              <div class="bar"><span id="barAfford" style="width:0%"></span></div>
+              <div class="row"><div>Acceptability 滿意度（綜合）</div><div class="kpi" id="kpiAccept">—</div></div>
+              <div class="bar"><span id="barAccept" style="width:0%"></span></div>
+              
+              <details class="card" style="margin-top:8px">
+                <summary>四A 計算邏輯（教學用近似）</summary>
+                <div class="hint">
+                  <div><strong>Availability</strong> = 100 × [0.6×覆蓋率 + 0.4×(頻率指標/4.6)]，頻率指標 = (15 ÷ 班距)^0.6。</div>
+                  <div><strong>Accessibility</strong>：基準可達工作數 = 400,000；<br/>可達工作數 = 基準 × (覆蓋率/0.5) × (15 ÷ 班距)^0.4，並上限 1,500,000。<br/>底層40% = 可達工作數 × [0.85 × (1 + max(0, 覆蓋率−0.6)×0.6)]。</div>
+                  <div><strong>Affordability</strong>（負擔率）= 每月交通費 ÷ 低收入月所得；<br/>每月交通費 = min(票價×2, 每日上限) × 22 天。</div>
+                  <div><strong>Acceptability</strong> = 60 + 20×((覆蓋率−0.5)/0.5) + 20×((15−班距)/14)，介於 0–100。</div>
+                  <div><strong>達標條件</strong>：可達工作數 ≥ 基準×1.15；底層40% ≥ 基準×1.20；負擔率 ≤ 15%。</div>
+                </div>
+              </details>
+<div class="row"><div class="label">關卡提示</div><div id="badgeFourA" class="pill">尚未達標</div></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- MODULE B: Mode Selection -->
+      <section id="moduleB" class="module">
+        <h2>模組B｜模式選擇工作坊（成本 vs 運能）</h2>
+        <p class="lead">選一條走廊，觀察不同模式在「每公里資本成本 vs 運能（pphpd）」的相對位置，並評估是否符合需求與韌性需求。</p>
+        <div class="grid grid-2">
+          <div class="card">
+            <div class="row"><div class="label">走廊</div>
+              <select id="corridorSel"></select>
+            </div>
+            <div class="row"><div class="label">候選模式</div>
+              <select id="modeSel">
+                <option value="BRT">BRT（快速公交）</option>
+                <option value="LRT">LRT（輕軌）</option>
+                <option value="METRO_ELEV">地鐵（高架）</option>
+                <option value="METRO_UNDER">地鐵（地下）</option>
+              </select>
+            </div>
+            <div class="row"><div class="label">幾乎不作為（比較基準）</div>
+              <select id="donothing">
+                <option value="baseline">顯示基準外部成本</option>
+                <option value="hide">隱藏</option>
+              </select>
+            </div>
+            <div class="hr"></div>
+            <div class="grid">
+              <div class="row"><div class="label">走廊長度</div><div class="kpi" id="kpiLen">— km</div></div>
+              <div class="row"><div class="label">尖峰需求</div><div class="kpi" id="kpiDemand">— pphpd</div></div>
+              <div class="row"><div class="label">建議最小運能</div><div class="kpi" id="kpiHeadroom">— pphpd</div></div>
+              <div class="row"><div class="label">估算成本（CAPEX 一次性 / O&M 每年）</div><div class="kpi" id="kpiCapex">—</div></div>
+              <div class="hint">CAPEX = 走廊長度 × 該模式每公里資本成本；O&M = 走廊長度 × 該模式每公里年營運維護費。數值僅供教學示意。</div>
+              <div class="row"><div class="label">韌性備註</div><div id="kpiResilience" class="pill">—</div></div>
+            </div>
+          </div>
+          <div class="card">
+            <canvas id="modeChart" height="300"></canvas>
+            <div class="label muted">圖說：X 軸 = 每公里資本成本（百萬 USD/km），Y 軸 = 運能（pphpd）。虛線為需求 + 20% 餘裕。</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- MODULE C: Econ vs Finance -->
+      <section id="moduleC" class="module">
+        <h2>模組C｜經濟 vs 財務（EIRR / NPV / FIRR）</h2>
+        <p class="lead">設定 CAPEX/O&M 與效益（時間節省、外部性降低等）與票運收入，估算經濟與財務指標。此為教學近似模型，重在概念。</p>
+        <div class="grid grid-2">
+          <div class="card">
+            <div class="grid">
+              <div class="row"><div class="label">分析年期</div><input type="number" id="years" value="40" min="10" max="60"></div>
+              <div class="row"><div class="label">經濟折現率</div><input type="number" id="drEcon" value="0.08" step="0.01"></div>
+              <div class="row"><div class="label">財務折現率</div><input type="number" id="drFin" value="0.06" step="0.01"></div>
+              <div class="hr"></div>
+              <div class="row"><div class="label">CAPEX（分三年 30/40/30） 百萬 USD</div><input type="number" id="capex" value="0" step="10"></div>
+              <div class="row"><div class="label">O&M 年支出 百萬 USD</div><input type="number" id="om" value="0" step="1"></div>
+              <div class="row"><div class="label">經濟效益 年額（時間/外部性） 百萬 USD</div><input type="number" id="benefit" value="120" step="5"></div>
+              <div class="row"><div class="label">票運 + 非票 年收入 百萬 USD</div><input type="number" id="revenue" value="70" step="1"></div>
+              <div class="row"><div class="label">殘值（期末，% CAPEX）</div><input type="number" id="salvage" value="20" step="5"></div>
+              <div class="row"><button id="btnCalc" class="btn-accent">計算指標</button></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="grid">
+              <div class="row"><div>EIRR（經濟內部報酬率）</div><div class="kpi" id="outEIRR">—</div></div>
+              <div class="row"><div>NPV（經濟） 百萬 USD</div><div class="kpi" id="outNPVE">—</div></div>
+              <div class="row"><div>FIRR（財務內部報酬率）</div><div class="kpi" id="outFIRR">—</div></div>
+              <div class="row"><div>NPV（財務） 百萬 USD</div><div class="kpi" id="outNPVF">—</div></div>
+              <div class="row"><div class="label">提示</div><div id="outHint" class="pill">—</div></div>
+              <div class="hr"></div>
+              <div class="foot">此近似模型僅供教學。實務需用詳細 O/D、價值時間、外部成本、建期分年、稅務與融資結構、敏感度/情境分析等。</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Scenario data -->
+      <section id="scenario" class="module">
+        <h2>情境資料｜Harbor City 2號線</h2>
+        <div class="grid grid-2">
+          <div class="card">
+            <div class="label">城市與走廊</div>
+            <pre class="mono" id="scenarioView" style="white-space:pre-wrap"></pre>
+          </div>
+          <div class="card">
+            <div class="label">說明</div>
+            <ul>
+              <li>人口 300 萬；雙核結構</li>
+              <li>走廊：東西向 16 km（pphpd 18k；低洼易淹）、南北向 21 km（pphpd 10k）</li>
+              <li>財政：市府資本補助上限 8 億 USD</li>
+              <li>社會：底層 40% 集中東側三區，現票價負擔偏高</li>
+              <li>韌性：目標達到百年洪與風暴潮性能門檻</li>
+            </ul>
+            <div class="row" style="margin-top:10px; gap:8px">
+              <button id="btnDownloadScenario">下載 scenario.json</button>
+              <label class="btn" for="uploadScenario" style="cursor:pointer">上傳並套用 scenario.json</label>
+              <input id="uploadScenario" type="file" accept="application/json" style="display:none" />
+            </div>
+            <div class="hint">提示：下載後可編輯 JSON，使用「上傳並套用」載入新情境；成功後會重建走廊與參數並套入各模組。</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Teacher & License -->
+      <section id="teacher" class="module">
+        <h2>教師配套與授權</h2>
+        <div class="grid grid-2">
+          <div class="card">
+            <div class="label">教學建議</div>
+            <ol>
+              <li>以小組完成三個關卡 KPI，截圖提交決策路徑</li>
+              <li>要求學生用 100–150 字解釋「為何模式選擇符合四A」</li>
+              <li>加分：說明如何用 LVC/TOD 補強財務缺口</li>
+            </ol>
+          </div>
+          <div class="card">
+            <div class="label">版權與致謝（必留）</div>
+            <p class="foot">內容部分改編自：Pulido, Daniel, Georges Darido, Ramon Munoz-Raskin, and Joanna Moody, eds. (2018). <em>The Urban Rail Development Handbook</em>. Washington, DC: World Bank. doi:10.1596/978-1-4648-1272-9. 授權：<strong>Creative Commons Attribution CC BY 3.0 IGO</strong>。本平台之翻譯/改編非世界銀行官方版本，世界銀行對其中內容或錯誤不負責。</p>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+<script>
+
+// -- iOS dynamic viewport height fix --
+(function(){
+  const setVh = ()=>{ document.documentElement.style.setProperty('--vh', `${window.innerHeight * 0.01}px`)};
+  window.addEventListener('resize', setVh);
+  window.addEventListener('orientationchange', setVh);
+  setVh();
+})();
+// ---------------------------
+// Scenario Data (Harbor City)
+// ---------------------------
+let scenario = {
+  city: "Harbor City",
+  population_million: 3.0,
+  budget_usd_m: 800,
+  poverty_focus_zones: ["E1","E2","E3"],
+  fares: { base: 1.0, cap_daily: 3.5 },
+  income_low40_month: 600,
+  corridors:[
+    { id:"E-W", name:"東西向", pphpd:18000, length_km:16, lowland_flood:true },
+    { id:"N-S", name:"南北向", pphpd:10000, length_km:21, lowland_flood:false, industrial_link:true }
+  ],
+  alt_modes:{
+    BRT:{ capex_per_km:25,  om_per_km_pa:0.7, capacity:20000 },
+    LRT:{ capex_per_km:60,  om_per_km_pa:1.2, capacity:30000 },
+    METRO_ELEV:{ capex_per_km:120, om_per_km_pa:2.0, capacity:45000 },
+    METRO_UNDER:{ capex_per_km:160, om_per_km_pa:2.6, capacity:60000 }
+  },
+  econ:{ eval_years:50, discount_rate_econ:0.08, discount_rate_fin:0.06 }
+};
+
+// App state
+const state = {
+  selectedCorridor: "E-W",
+  selectedMode: "LRT",
+  fourA: { coverage: 60, headway: 8, fare: 1.0, cap: 3.5, income40: 600 },
+  computed: { capex_m: 0, om_m: 0 }
+};
+
+// ------------- UTILITIES -------------
+function fmtNum(n){ return n.toLocaleString("en-US") }
+function clamp(v,min,max){ return Math.max(min, Math.min(max, v)) }
+function setText(id, txt){ const el=document.getElementById(id); if(el) el.textContent = txt }
+function setWidth(id, pct){ const el=document.getElementById(id); if(el) el.style.width = pct + "%" }
+function badge(id, text, kind){ const el = document.getElementById(id); if(!el) return; el.textContent = text; el.className = `pill ${kind||""}` }
+function download(filename, text) {
+  const element = document.createElement('a');
+  element.setAttribute('href', 'data:application/json;charset=utf-8,' + encodeURIComponent(text));
+  element.setAttribute('download', filename);
+  element.style.display = 'none';
+  document.body.appendChild(element);
+  element.click();
+  document.body.removeChild(element);
+}
+
+// ---------- NAV ----------
+Array.from(document.querySelectorAll('.nav button')).forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    const target = btn.getAttribute('data-target');
+    document.querySelectorAll('section.module').forEach(sec=>sec.classList.remove('active'));
+    document.getElementById(target).classList.add('active');
+    if(target==='moduleB') { setTimeout(()=>{ try{ redrawMode(); }catch(e){} }, 50); }
+    if(target==='mapdash'){ setTimeout(()=>{ try{ refreshMapAndDash(); }catch(e){} }, 50); }
+  })
+});
+
+// ---------- OVERVIEW ----------
+// no-op
+
+// ---------- MODULE A (Four A) ----------
+function initFourA(){
+  const cov = document.getElementById('cov');
+  const hdw = document.getElementById('hdw');
+  const fare = document.getElementById('fare');
+  const cap = document.getElementById('cap');
+  const inc = document.getElementById('inc');
+
+  cov.value = state.fourA.coverage; hdw.value = state.fourA.headway;
+  fare.value = state.fourA.fare; cap.value = state.fourA.cap; inc.value = state.fourA.income40;
+
+  const syncLabels = ()=>{
+    setText('covLbl', cov.value+"%");
+    setText('hdwLbl', hdw.value+" 分");
+    setText('fareLbl', "$"+Number(fare.value).toFixed(2));
+    setText('capLbl', "$"+Number(cap.value).toFixed(2));
+    setText('incLbl', "$"+Number(inc.value).toFixed(0));
+  };
+
+  const compute = ()=>{
+    // Availability: combine normalized coverage and frequency (inverse of headway)
+    const coverage = Number(cov.value)/100; // 0.2..1.0
+    const headway = Number(hdw.value); // 1..15
+    const freqIndex = Math.pow(15/headway, 0.6); // 1..~15^0.6 ~ 4.6
+    const availScore = clamp((coverage*0.6 + (freqIndex/4.6)*0.4)*100, 0, 100);
+
+    // Accessibility: baseline jobs within 60 min (teaching approximation)
+    const baseJobs = 400000; // baseline jobs in reach
+    const jobs = baseJobs * (coverage/0.5) * Math.pow(15/headway, 0.4);
+    const jobsCap = clamp(jobs, 0, 1500000);
+
+    // Bottom 40% boost if coverage>0.6
+    const bottomFactor = 1 + Math.max(0, (coverage-0.6))*0.6; // up to +24%
+    const jobsBottom = jobsCap * (0.85*bottomFactor); // emphasize pro-poor focus
+
+    // Affordability: monthly cost vs income (22 workdays, 2 trips/day, daily cap)
+    const baseFare = Number(fare.value);
+    const dailyCap = Number(cap.value);
+    const tripsPerDay = 2; const workdays = 22;
+    const dailyCost = Math.min(baseFare*tripsPerDay, dailyCap);
+    const monthCost = dailyCost * workdays;
+    const income = Number(inc.value);
+    const burden = clamp( (monthCost/income)*100, 0, 100 );
+
+    // Acceptability: composite of headway and crowding proxy (here use coverage)
+    const accept = clamp( 60 + 20*((coverage-0.5)/0.5) + 20*((15-headway)/14), 0, 100 );
+
+    // Update UI
+    setText('kpiAvail', availScore.toFixed(0)+" / 100");
+    setWidth('barAvail', availScore);
+
+    setText('kpiAccess', `${fmtNum(Math.round(jobsCap))}（總） / ${fmtNum(Math.round(jobsBottom))}（底40%）`);
+    setWidth('barAccess', clamp((jobsCap/1500000)*100,0,100));
+
+    const burdenTxt = burden.toFixed(1)+"%";
+    setText('kpiAfford', burdenTxt + `（每月 $${monthCost.toFixed(2)}）`);
+    setWidth('barAfford', burden);
+
+    setText('kpiAccept', accept.toFixed(0)+" / 100");
+    setWidth('barAccept', accept);
+
+    // Badge rule: total jobs +15% and bottom40 +20%, burden<=15%
+    const jobsOK = (jobsCap >= baseJobs*1.15);
+    const b40OK  = (jobsBottom >= baseJobs*1.2);
+    const burdenOK = (burden <= 15);
+    if(jobsOK && b40OK && burdenOK){ badge('badgeFourA','達成四A關卡！','ok') }
+    else { badge('badgeFourA','尚未達標','') }
+
+    // Save
+    state.fourA = { coverage: Number(cov.value), headway: Number(hdw.value), fare: Number(fare.value), cap: Number(cap.value), income40: Number(inc.value) };
+  };
+
+  [cov,hdw,fare,cap,inc].forEach(el=>{ el.addEventListener('input', ()=>{syncLabels(); compute();}) })
+  syncLabels(); compute();
+}
+
+// ---------- MODULE B (Mode Selection) ----------
+function initMode(){
+  const sel = document.getElementById('corridorSel');
+  scenario.corridors.forEach(c=>{
+    const o=document.createElement('option'); o.value=c.id; o.textContent=`${c.name}（${c.length_km} km / ${fmtNum(c.pphpd)} pphpd）`; sel.appendChild(o);
+  });
+  sel.value = state.selectedCorridor;
+  const modeSel = document.getElementById('modeSel'); modeSel.value = state.selectedMode;
+
+  const update = ()=>{
+    const cid = sel.value; const cor = scenario.corridors.find(c=>c.id===cid);
+    const modeKey = modeSel.value; const m = scenario.alt_modes[modeKey];
+
+    // Headroom 20%
+    const headroom = Math.round(cor.pphpd*1.2);
+    setText('kpiLen', `${cor.length_km}`); setText('kpiDemand', fmtNum(cor.pphpd)); setText('kpiHeadroom', fmtNum(headroom));
+
+    // CAPEX
+    const capex = m.capex_per_km * cor.length_km; // million USD
+    state.computed.capex_m = capex;
+    // O&M (annual)
+    const om = m.om_per_km_pa * cor.length_km; state.computed.om_m = om;
+
+    setText('kpiCapex', `${fmtNum(capex)} 百萬 USD（O&M 年 ${om.toFixed(1)} 百萬）`);
+
+    // Resilience note
+    let resil = '一般'; let kind='';
+    if(cor.lowland_flood){
+      if(modeKey==="BRT"){ resil = '低洼洪水風險：需額外防洪，易中斷'; kind='warn' }
+      else if(modeKey==="LRT"){ resil = '低洼洪水風險：軌道與站體需防護'; kind='warn' }
+      else { resil = '低洼區：建議高架或地下並設防洪閘/抽排'; kind='ok' }
+    }
+    badge('kpiResilience', resil, kind);
+
+    drawModeChart(cor, headroom);
+
+    // preload into Econ module
+    document.getElementById('capex').value = Math.round(capex);
+    document.getElementById('om').value = om.toFixed(1);
+  };
+
+  sel.addEventListener('change', ()=>{ state.selectedCorridor = sel.value; update(); try{ refreshMapAndDash(); }catch(e){} });
+  modeSel.addEventListener('change', ()=>{ state.selectedMode = modeSel.value; update(); try{ refreshMapAndDash(); }catch(e){} });
+  document.getElementById('donothing').addEventListener('change', ()=> drawModeChart());
+
+  update();
+}
+
+
+function redrawMode(){
+  const cor = scenario.corridors.find(c=>c.id===state.selectedCorridor) || scenario.corridors[0];
+  const headroom = Math.round(cor.pphpd*1.2);
+  drawModeChart(cor, headroom);
+}
+window.addEventListener('resize', ()=>{
+  const mod = document.getElementById('moduleB');
+  if(mod.classList.contains('active')){ redrawMode(); }
+});
+
+function drawModeChart(cor, headroom){
+  const canvas = document.getElementById('modeChart'); const ctx = canvas.getContext('2d');
+  // If not visible (width==0), try again after layout
+  if(canvas.clientWidth === 0 || canvas.clientHeight === 0){ setTimeout(()=>drawModeChart(cor, headroom), 60); return; }
+  const W = canvas.width; const H = canvas.height;
+  // Hi-DPI fix
+  const dpr = window.devicePixelRatio || 1; canvas.width = canvas.clientWidth * dpr; canvas.height = canvas.clientHeight * dpr; ctx.scale(dpr,dpr);
+  // axes ranges
+  const xMin=0, xMax=180; // capex per km
+  const yMin=0, yMax=65000; // capacity
+
+  // plot area
+  const pad=40; const w=canvas.clientWidth - pad*2; const h=canvas.clientHeight - pad*2;
+  const toX = v => pad + (v-xMin)/(xMax-xMin)*w;
+  const toY = v => pad + h - (v-yMin)/(yMax-yMin)*h;
+
+  // bg
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle = '#0a1220'; ctx.fillRect(0,0,canvas.clientWidth,canvas.clientHeight);
+
+  // grid
+  ctx.strokeStyle = '#1f2937'; ctx.lineWidth = 1;
+  for(let gx=0; gx<=180; gx+=20){ ctx.beginPath(); ctx.moveTo(toX(gx), pad); ctx.lineTo(toX(gx), pad+h); ctx.stroke(); }
+  for(let gy=0; gy<=65000; gy+=10000){ ctx.beginPath(); ctx.moveTo(pad, toY(gy)); ctx.lineTo(pad+w, toY(gy)); ctx.stroke(); }
+
+  // axes
+  ctx.strokeStyle = '#334155'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(pad, pad); ctx.lineTo(pad, pad+h); ctx.lineTo(pad+w, pad+h); ctx.stroke();
+  ctx.fillStyle = '#94a3b8'; ctx.font = '12px sans-serif';
+  ctx.fillText('Capex (M USD/km)', pad+w-120, pad+h+24);
+  ctx.save(); ctx.translate(10, pad+10); ctx.rotate(-Math.PI/2); ctx.fillText('Capacity (pphpd)', 0,0); ctx.restore();
+
+  // Demand + 20% headroom line
+  const corridor = cor || scenario.corridors.find(c=>c.id===state.selectedCorridor);
+  const hr = headroom || Math.round(corridor.pphpd*1.2);
+  ctx.strokeStyle = '#22d3ee'; ctx.setLineDash([6,6]); ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(toX(xMin), toY(hr)); ctx.lineTo(toX(xMax), toY(hr)); ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle = '#22d3ee'; ctx.fillText(`需求 +20%（${fmtNum(hr)}）`, toX(5), toY(hr)-6);
+
+  // Points for modes
+  const modes = scenario.alt_modes; const colors = {BRT:'#86efac', LRT:'#fde68a', METRO_ELEV:'#93c5fd', METRO_UNDER:'#c4b5fd'};
+  const labels = {BRT:'BRT', LRT:'LRT', METRO_ELEV:'Metro（高架）', METRO_UNDER:'Metro（地下）'};
+  Object.keys(modes).forEach(k=>{
+    const m=modes[k]; const x=toX(m.capex_per_km); const y=toY(m.capacity);
+    ctx.fillStyle = colors[k]; ctx.strokeStyle = '#0b1020'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(x, y, 8, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#e5e7eb'; ctx.fillText(labels[k], x+12, y+4);
+  });
+
+  // "Do-nothing" baseline externalities (illustrative)
+  const showDo = document.getElementById('donothing').value !== 'hide';
+  if(showDo){
+    ctx.fillStyle = '#f87171';
+    ctx.fillText('幾乎不作為：擁堵/事故/污染外部成本 ≈ 每年 $150M（示意）', pad+10, pad+20);
+  }
+}
+
+// ---------- MODULE C (Econ vs Finance) ----------
+function irrFromCashflows(cfs){
+  // Bisection between -0.99 and 0.6 ( -99% to +60% )
+  let low=-0.99, high=0.6; const npv=(r)=>cfs.reduce((acc,cf,t)=>acc + cf/Math.pow(1+r, t),0);
+  let npvL=npv(low), npvH=npv(high);
+  if(npvL*npvH>0) return null; // no root in range
+  for(let i=0;i<200;i++){
+    const mid=(low+high)/2; const npvM=npv(mid);
+    if(Math.abs(npvM)<1e-6) return mid;
+    if(npvL*npvM<0){ high=mid; npvH=npvM } else { low=mid; npvL=npvM }
+  }
+  return (low+high)/2;
+}
+function npvFromCashflows(cfs, r){ return cfs.reduce((acc,cf,t)=>acc + cf/Math.pow(1+r,t),0) }
+
+function initEcon(){
+  const capexEl = document.getElementById('capex');
+  const omEl = document.getElementById('om');
+  const yearsEl = document.getElementById('years');
+  const drE = document.getElementById('drEcon');
+  const drF = document.getElementById('drFin');
+  const beneEl = document.getElementById('benefit');
+  const revEl = document.getElementById('revenue');
+  const salvageEl = document.getElementById('salvage');
+
+  document.getElementById('btnCalc').addEventListener('click', ()=>{
+    const Y = Number(yearsEl.value);
+    const capex = Number(capexEl.value); // total million
+    const om = Number(omEl.value); // annual
+    const benefit = Number(beneEl.value); // annual economic benefits
+    const revenue = Number(revEl.value); // annual revenue
+    const salvagePct = Number(salvageEl.value)/100;
+
+    // Build ECON cashflows: negative capex in years 0..2 (30/40/30), benefits from year 3..Y, O&M negative
+    const econCfs=[]; for(let t=0;t<=Y;t++){ econCfs.push(0) }
+    econCfs[0] = -capex*0.30; econCfs[1] = -capex*0.40; econCfs[2] = -capex*0.30;
+    for(let t=3;t<=Y;t++){ econCfs[t] = benefit - om }
+    econCfs[Y] += capex*salvagePct; // residual value
+
+    const eirr = irrFromCashflows(econCfs);
+    const enpv = npvFromCashflows(econCfs, Number(drE.value));
+
+    // FIN cashflows: same capex and O&M, inflow = revenue
+    const finCfs = econCfs.map((v,t)=>{
+      if(t<=2) return v; // capex years
+      // replace economic benefit with revenue
+      return (revenue - om) + (t===Y ? capex*salvagePct : 0);
+    });
+    const firr = irrFromCashflows(finCfs);
+    const fnpv = npvFromCashflows(finCfs, Number(drF.value));
+
+    setText('outEIRR', eirr===null? '不可得' : (eirr*100).toFixed(1)+'%');
+    setText('outNPVE', enpv.toFixed(1));
+    setText('outFIRR', firr===null? '不可得' : (firr*100).toFixed(1)+'%');
+    setText('outNPVF', fnpv.toFixed(1));
+
+    let hint='—'; let kind='';
+    if(eirr!==null && eirr>=0.12 && fnpv>=0){ hint='經濟達標，財務可行'; kind='ok' }
+    else if(eirr!==null && eirr>=0.12 && fnpv<0){ hint='經濟達標；考慮 VGF / LVC / 非票收入'; kind='warn' }
+    else { hint='需調整方案（效益不足或成本過高）'; kind='bad' }
+    badge('outHint', hint, kind);
+  });
+}
+
+
+// ---------- SCENARIO UPLOAD ----------
+function applyScenario(newS){
+  if(!newS || !Array.isArray(newS.corridors) || !newS.alt_modes){ alert('JSON 格式不完整，需包含 corridors 與 alt_modes'); return; }
+  scenario = newS;
+  // Rebuild corridor selector
+  const sel = document.getElementById('corridorSel');
+  if(sel){ sel.innerHTML = ''; (scenario.corridors||[]).forEach(c=>{ const o=document.createElement('option'); o.value=c.id; o.textContent=`${c.name||c.id}（${c.length_km} km / ${Number(c.pphpd).toLocaleString()} pphpd）`; sel.appendChild(o); });
+  state.selectedCorridor = (scenario.corridors[0]||{}).id || 'E-W'; sel.value = state.selectedCorridor; }
+  // Update fares/inc defaults if present
+  if(scenario.fares){ if(scenario.fares.base!=null) document.getElementById('fare').value = scenario.fares.base;
+    if(scenario.fares.cap_daily!=null) document.getElementById('cap').value = scenario.fares.cap_daily; }
+  if(scenario.income_low40_month!=null){ document.getElementById('inc').value = scenario.income_low40_month; }
+  // Refresh modules
+  initFourA(); initMode(); initScenario();
+try{ refreshMapAndDash(); }catch(e){} try{ refreshMapAndDash(); }catch(e){}
+  if(document.getElementById('moduleB').classList.contains('active')){ redrawMode(); }
+}
+
+(function(){
+  const up = document.getElementById('uploadScenario'); if(!up) return;
+  up.addEventListener('change', (e)=>{
+    const f = e.target.files && e.target.files[0]; if(!f) return;
+    const reader = new FileReader();
+    reader.onload = (ev)=>{
+      try{ const json = JSON.parse(ev.target.result); applyScenario(json); }
+      catch(err){ alert('JSON 解析失敗：' + err.message); }
+    };
+    reader.readAsText(f);
+  });
+})();
+
+// ---------- SCENARIO VIEW ----------
+function initScenario(){
+  const txt = JSON.stringify(scenario, null, 2);
+  document.getElementById('scenarioView').textContent = txt;
+  document.getElementById('btnDownloadScenario').addEventListener('click', ()=>{
+    download('scenario.json', txt);
+  });
+}
+
+// ---------- HEADER ACTIONS ----------
+function initHeader(){
+  document.getElementById('btnExport').addEventListener('click', ()=>{
+    const dump = JSON.stringify({ scenario, state }, null, 2);
+    download('urban-rail-learning.json', dump);
+  });
+  document.getElementById('btnReset').addEventListener('click', ()=>{
+    // Reset state
+    state.selectedCorridor = 'E-W'; state.selectedMode='LRT';
+    state.fourA = { coverage:60, headway:8, fare:1.0, cap:3.5, income40:600 };
+    // Re-init modules
+    initFourA();
+    const sel = document.getElementById('corridorSel'); sel.value='E-W';
+    const modeSel = document.getElementById('modeSel'); modeSel.value='LRT';
+    initMode();
+    try{ refreshMapAndDash(); }catch(e){}
+    // Reset Econ fields
+    document.getElementById('years').value=40;
+    document.getElementById('drEcon').value=0.08; document.getElementById('drFin').value=0.06;
+    document.getElementById('benefit').value=120; document.getElementById('revenue').value=70; document.getElementById('salvage').value=20;
+  });
+}
+
+
+// ---------- MAP & DASHBOARD ----------
+function getSelectedCorridor(){ return scenario.corridors.find(c=>c.id===state.selectedCorridor) || scenario.corridors[0]; }
+function getSelectedMode(){ return scenario.alt_modes[state.selectedMode]; }
+
+function drawMap(){
+  const canvas = document.getElementById('mapCanvas'); if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  if(canvas.clientWidth === 0 || canvas.clientHeight === 0){ setTimeout(drawMap, 60); return; }
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = canvas.clientWidth * dpr; canvas.height = canvas.clientHeight * dpr; ctx.scale(dpr,dpr);
+  const W = canvas.clientWidth, H = canvas.clientHeight;
+  // Background grid
+  ctx.fillStyle = '#0b1220'; ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle = '#112032'; ctx.lineWidth = 1;
+  for(let x=0; x<=W; x+=Math.max(20, W/12)){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+  for(let y=0; y<=H; y+=Math.max(20, H/8)){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+  // Water stripe suggestion
+  ctx.fillStyle = 'rgba(56,189,248,0.06)'; ctx.fillRect(0, H*0.65, W, H*0.35);
+  // Draw corridors
+  const corridors = scenario.corridors || [];
+  corridors.forEach(c=>{
+    const poly = c.polyline;
+    let points = [];
+    if(Array.isArray(poly) && poly.length>=2){
+      // coords normalized 0..100
+      points = poly.map(([x,y])=> [x/100*W, y/100*H]);
+    }else{
+      // Fallback demo line
+      if((c.name||'').includes('東西') || c.id==='E-W'){ points = [[W*0.1, H*0.5],[W*0.9, H*0.5]]; }
+      else { points = [[W*0.5, H*0.15],[W*0.5, H*0.85]]; }
+    }
+    // style
+    const isSel = (c.id===state.selectedCorridor);
+    ctx.strokeStyle = isSel ? '#22d3ee' : '#475569';
+    ctx.lineWidth = isSel ? 6 : 3;
+    ctx.lineCap='round'; ctx.lineJoin='round';
+    ctx.beginPath();
+    ctx.moveTo(points[0][0], points[0][1]);
+    for(let i=1;i<points.length;i++) ctx.lineTo(points[i][0], points[i][1]);
+    ctx.stroke();
+    // station dots
+    ctx.fillStyle = isSel ? '#a78bfa' : '#64748b';
+    const n = Math.max(2, Math.round((c.length_km||10)/2));
+    for(let i=0;i<=n;i++){ const t=i/n; const x=points[0][0]*(1-t)+points[points.length-1][0]*t; const y=points[0][1]*(1-t)+points[points.length-1][1]*t; ctx.beginPath(); ctx.arc(x,y, isSel? 3.5:2.5, 0, Math.PI*2); ctx.fill(); }
+    // label
+    ctx.fillStyle = '#e5e7eb'; ctx.font='12px sans-serif'; const lx = points[Math.floor(points.length/2)][0]+8; const ly=points[Math.floor(points.length/2)][1]-6; ctx.fillText(`${c.name||c.id}`, lx, ly);
+  });
+}
+
+function updateMapDashboard(){
+  // Corridor / mode info
+  const cor = getSelectedCorridor(); const mk = state.selectedMode; const mode = getSelectedMode();
+  const modeName = ({BRT:'BRT',LRT:'LRT',METRO_ELEV:'Metro高架',METRO_UNDER:'Metro地下'})[mk] || mk;
+  setText('mdCorrMode', `${cor ? (cor.name || cor.id) : '—'} / ${modeName}`);
+
+  // Four A - reuse computation from module A inputs
+  const coverage = Number(document.getElementById('cov').value)/100;
+  const headway = Number(document.getElementById('hdw').value);
+  const freqIndex = Math.pow(15/headway, 0.6);
+  const availScore = clamp((coverage*0.6 + (freqIndex/4.6)*0.4)*100, 0, 100);
+  const baseJobs = 400000;
+  const jobs = Math.min(baseJobs * (coverage/0.5) * Math.pow(15/headway, 0.4), 1500000);
+  const bottomFactor = 1 + Math.max(0, (coverage-0.6))*0.6;
+  const jobsBottom = jobs * (0.85*bottomFactor);
+  const fare = Number(document.getElementById('fare').value);
+  const cap = Number(document.getElementById('cap').value);
+  const inc = Number(document.getElementById('inc').value);
+  const dailyCost = Math.min(fare*2, cap);
+  const monthCost = dailyCost*22;
+  const burden = clamp((monthCost/inc)*100,0,100);
+  const accept = clamp( 60 + 20*((coverage-0.5)/0.5) + 20*((15-headway)/14), 0, 100 );
+  setText('mdFourA', `${availScore.toFixed(0)}/100 · ${fmtNum(Math.round(jobs))}/${fmtNum(Math.round(jobsBottom))} · ${burden.toFixed(1)}% · ${accept.toFixed(0)}/100`);
+
+  // Farebox (revenue / O&M)
+  const om = (mode.om_per_km_pa||0) * (cor.length_km||0);
+  const revenue = Number(document.getElementById('revenue').value);
+  const farebox = om>0 ? revenue/om : 0;
+  setText('mdFarebox', `${farebox.toFixed(2)} 倍`);
+
+  // EIRR & FIRR (on-the-fly using Module C fields)
+  const Y = Number(document.getElementById('years').value);
+  const capex = Number(document.getElementById('capex').value);
+  const benefit = Number(document.getElementById('benefit').value);
+  const salvagePct = Number(document.getElementById('salvage').value)/100;
+  const drE = Number(document.getElementById('drEcon').value);
+  const drF = Number(document.getElementById('drFin').value);
+
+  const econCfs=[]; for(let t=0;t<=Y;t++) econCfs.push(0);
+  econCfs[0] = -capex*0.30; econCfs[1] = -capex*0.40; econCfs[2] = -capex*0.30;
+  for(let t=3;t<=Y;t++){ econCfs[t] = benefit - om }
+  econCfs[Y] += capex*salvagePct;
+  const eirr = irrFromCashflows(econCfs);
+  const enpv = npvFromCashflows(econCfs, drE);
+
+  const finCfs = econCfs.map((v,t)=>{ if(t<=2) return v; return (revenue - om) + (t===Y ? capex*salvagePct : 0); });
+  const firr = irrFromCashflows(finCfs);
+  const fnpv = npvFromCashflows(finCfs, drF);
+
+  setText('mdIRR', `${eirr===null?'—':(eirr*100).toFixed(1)+'%'} / ${firr===null?'—':(firr*100).toFixed(1)+'%'}`);
+  setText('mdNPV', `${enpv.toFixed(1)} / ${fnpv.toFixed(1)}`);
+}
+
+function refreshMapAndDash(){ drawMap(); updateMapDashboard(); }
+
+// Redraw when entering map module or on resize
+window.addEventListener('resize', ()=>{ const mod = document.getElementById('mapdash'); if(mod && mod.classList.contains('active')) refreshMapAndDash(); });
+
+// ---------- INIT ----------
+initHeader();
+initFourA();
+initMode();
+initEcon();
+initScenario();
+try{ refreshMapAndDash(); }catch(e){}
+
+</script>
+</body>
+</html>
