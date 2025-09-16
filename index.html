@@ -22,6 +22,8 @@
   }
   *{box-sizing:border-box}
   html,body{height:100%}
+  html{height:-webkit-fill-available}
+  body{min-height:100vh; min-height:-webkit-fill-available}
   body{
     margin:0; background:linear-gradient(180deg,#0b1020 0%, #0a0f1a 100%);
     color:var(--text); font-family: ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Inter,Helvetica,Arial,"Noto Sans",sans-serif;
@@ -50,10 +52,10 @@
   .btn-ghost{background:transparent; border-color:#334155}
 
   .layout{
-    display:grid; grid-template-columns: 280px 1fr; gap:16px; padding:16px; height:calc(var(--vh, 1vh) * 100 - var(--headerH, 60px));
+    display:grid; grid-template-columns: 280px 1fr; gap:16px; padding:16px; height:calc(var(--vh, 1vh) * 100 - var(--headerH, 60px)); min-height:0;
   }
   aside{
-    background: var(--panel); border:1px solid #1f2937; border-radius:16px; padding:12px; overflow:auto;
+    background: var(--panel); border:1px solid #1f2937; border-radius:16px; padding:12px; overflow:auto; -webkit-overflow-scrolling:touch; touch-action: pan-y;
   }
   .brand{
     display:flex; align-items:center; gap:10px; margin-bottom:8px; color:var(--text-dim)
@@ -64,7 +66,7 @@
   .nav .active{outline:2px solid var(--accent); border-color:var(--accent)}
 
   main{
-    background: var(--panel); border:1px solid #1f2937; border-radius:16px; padding:16px; overflow:auto;
+    background: var(--panel); border:1px solid #1f2937; border-radius:16px; padding:16px; overflow:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; touch-action: pan-y;
   }
   section.module{display:none}
   section.module.active{display:block}
@@ -107,6 +109,9 @@
 
   /* -------- iPhone 6.1" (<=430px CSS width) compact layout -------- */
   @media (max-width: 430px){
+    /* Fallback: allow full-page scroll if needed */
+    body{overflow:auto}
+
     header h1{font-size:14px}
     header .actions button{padding:6px 10px; border-radius:10px}
     .layout{grid-template-columns:1fr; gap:10px; padding:10px; height:calc(var(--vh, 1vh) * 100 - var(--headerH))}
@@ -386,8 +391,10 @@
 // -- iOS dynamic viewport height fix --
 (function(){
   const setVh = ()=>{ document.documentElement.style.setProperty('--vh', `${window.innerHeight * 0.01}px`)};
-  window.addEventListener('resize', setVh);
-  window.addEventListener('orientationchange', setVh);
+  ['resize','orientationchange','visibilitychange'].forEach(ev=>window.addEventListener(ev,setVh));
+  // update on scroll of internal containers
+  const hook = ()=>{ setVh(); };
+  window.addEventListener('scroll', hook, true);
   setVh();
 })();
 // ---------------------------
